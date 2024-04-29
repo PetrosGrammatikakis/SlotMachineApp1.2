@@ -239,8 +239,6 @@ fun ShopScreen(
         BackgroundItemModel("Background 2", 100, R.drawable.background1),
         BackgroundItemModel("Background 3", 100, R.drawable.ship),
         BackgroundItemModel("Background 4", 100, R.drawable._k_pc_wallpapers_160_bc317),
-        BackgroundItemModel("Background 5", 50, R.drawable.clover),
-        BackgroundItemModel("Background 6", 100, R.drawable.grapess)
     ).map { bg ->
         bg.copy(
             purchased = purchasedFromPrefs.contains(bg.name),
