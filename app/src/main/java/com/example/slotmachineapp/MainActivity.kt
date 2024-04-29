@@ -1,5 +1,6 @@
 package com.example.slotmachineapp
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -52,9 +53,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.platform.LocalContext
+
 
 
 
@@ -79,9 +78,9 @@ class MainActivity : ComponentActivity() {
         // Initialize SharedPreferences for storing data
         sharedPreferences = getSharedPreferences("my_preferences", Context.MODE_PRIVATE)
         // Initialize mutable state for coins count
-        coins = mutableStateOf(sharedPreferences.getInt("coins", 100))
+        coins = mutableIntStateOf(sharedPreferences.getInt("coins", 100))
         // Initialize mutable state for equipped background ID
-        equippedBackgroundId = mutableStateOf(sharedPreferences.getInt("equipped_background_id", R.drawable.man))
+        equippedBackgroundId = mutableIntStateOf(sharedPreferences.getInt("equipped_background_id", R.drawable.man))
         // Initialize mutable state for purchased backgrounds
         purchasedBackgrounds = mutableStateOf(
             sharedPreferences.getStringSet("purchased_backgrounds", setOf()) ?: setOf()
@@ -218,6 +217,7 @@ fun CustomButton(
 
 // Composable function for the shop screen
 
+@SuppressLint("MutableCollectionMutableState")
 @Composable
 fun ShopScreen(
     coins: MutableState<Int>,
@@ -591,9 +591,8 @@ suspend fun spinReel(reel: MutableList<Int>): List<Int> {
     }
 
     // Collect the result of the reel after spinning
-    val result = reel.toList()
 
-    return result
+    return reel.toList()
 }
 
 // Composable function to render the reels view
@@ -652,9 +651,9 @@ fun SlotMachineAppPreview() {
     // Mock NavController for preview
     val navController = rememberNavController()
     // Mock coins state for preview
-    val coins = remember { mutableStateOf(100) }
+    val coins = remember { mutableIntStateOf(100) }
     // Mock equipped background ID state for preview
-    val equippedBackgroundId = remember { mutableStateOf(R.drawable.man) }
+    val equippedBackgroundId = remember { mutableIntStateOf(R.drawable.man) }
     // Call the SlotMachineApp composable with mock data
     SlotMachineApp(navController = navController, coins = coins, equippedBackgroundId = equippedBackgroundId)
 }
