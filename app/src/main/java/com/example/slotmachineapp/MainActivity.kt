@@ -3,6 +3,7 @@ package com.example.slotmachineapp
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -49,6 +50,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
 
 
@@ -65,6 +70,7 @@ class MainActivity : ComponentActivity() {
     private val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
         equippedBackgroundId.value = newBackgroundId
     }
+
 
     // onCreate function called when the activity is created
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -110,7 +116,9 @@ class MainActivity : ComponentActivity() {
                             onBackClicked = { navController.popBackStack() },
                             equippedBackgroundId = equippedBackgroundId,
                             purchasedBackgrounds = purchasedBackgrounds,
-                            onBackgroundEquipped = onBackgroundEquipped
+                            onBackgroundEquipped = onBackgroundEquipped,
+                            sharedPreferences = sharedPreferences // Pass sharedPreferences here
+
                         )
                     }
 
@@ -129,10 +137,6 @@ class MainActivity : ComponentActivity() {
             putStringSet("purchased_backgrounds", purchasedBackgrounds.value)
             apply()
         }
-        // Restoring in onCreate
-        purchasedBackgrounds = mutableStateOf(
-            sharedPreferences.getStringSet("purchased_backgrounds", setOf()) ?: setOf()
-        )
     }
 
 }
@@ -213,57 +217,86 @@ fun CustomButton(
 
 
 // Composable function for the shop screen
+
 @Composable
 fun ShopScreen(
     coins: MutableState<Int>,
     onBackClicked: () -> Unit,
     equippedBackgroundId: MutableState<Int>,
     purchasedBackgrounds: MutableState<Set<String>>,
-    onBackgroundEquipped: (Int) -> Unit
+    onBackgroundEquipped: (Int) -> Unit,
+    sharedPreferences: SharedPreferences
 ) {
-    // Convert purchasedBackgrounds to MutableSet<String>
-    val mutablePurchasedBackgrounds = remember { mutableStateOf(purchasedBackgrounds.value.toMutableSet()) }
+    val purchasedFromPrefs = sharedPreferences.getStringSet("purchased_backgrounds", emptySet()) ?: emptySet()
+    val equippedFromPrefs = sharedPreferences.getInt("equipped_background_id", 0)
 
-    // Create a list of backgrounds available in the shop
+    // Ensure equippedBackgroundId is initialized correctly
+    equippedBackgroundId.value = equippedFromPrefs
+
+    // Initialize backgrounds with purchase and equipped state
     val backgrounds = listOf(
-        BackgroundItemModel("Background 1", 0, R.drawable.man),
+        BackgroundItemModel("Background 1", 10, R.drawable.man),
         BackgroundItemModel("Background 2", 100, R.drawable.background1),
-        BackgroundItemModel("Background 3", 100, R.drawable.ship)
-        // Add more backgrounds here
-    )
+        BackgroundItemModel("Background 3", 100, R.drawable.ship),
+        BackgroundItemModel("Background 4", 100, R.drawable._k_pc_wallpapers_160_bc317),
+        BackgroundItemModel("Background 5", 50, R.drawable.clover),
+        BackgroundItemModel("Background 6", 100, R.drawable.grapess)
+    ).map { bg ->
+        bg.copy(
+            purchased = purchasedFromPrefs.contains(bg.name),
+            equipped = bg.imageResource == equippedFromPrefs
+        )
+    }
 
-    // Column composable to hold the content of the shop screen
-    Column(
+    // Convert purchasedBackgrounds to MutableSet<String>
+    val mutablePurchasedBackgrounds = remember { mutableStateOf(purchasedFromPrefs.toMutableSet()) }
+
+    // Ensure equippedBackgroundId is initialized correctly
+    equippedBackgroundId.value = equippedFromPrefs
+
+    // LazyColumn composable to hold the content of the shop screen
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         // Display available coins count
-        Text(
-            text = "Available Coins: ${coins.value}",
-            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        item {
+            Text(
+                text = "Available Coins: ${coins.value}",
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
         // Display each background item available in the shop
-        backgrounds.forEach { background ->
+        items(backgrounds) { background ->
             ShopBackgroundItem(
                 background = background,
                 coins = coins,
                 equippedBackgroundId = equippedBackgroundId,
                 purchasedBackgrounds = mutablePurchasedBackgrounds,
-                onBackgroundEquipped = onBackgroundEquipped
+                onBackgroundEquipped = onBackgroundEquipped,
+                sharedPreferences = sharedPreferences // Pass sharedPreferences here
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Button to navigate back to the game screen
-        Button(onClick = onBackClicked) {
-            Text("Back to Game")
+        item {
+            Button(onClick = onBackClicked, modifier = Modifier.fillMaxWidth()) {
+                Text("Back to Game")
+            }
         }
     }
+
+    // Update the list of purchased backgrounds when recomposed
+    LaunchedEffect(Unit) {
+        purchasedBackgrounds.value = purchasedFromPrefs
+    }
 }
+
 
 
 
@@ -278,6 +311,7 @@ data class BackgroundItemModel(
     var equipped: Boolean = false
 )
 
+
 // Composable function for rendering a background item in the shop
 @Composable
 fun ShopBackgroundItem(
@@ -285,34 +319,31 @@ fun ShopBackgroundItem(
     coins: MutableState<Int>,
     equippedBackgroundId: MutableState<Int>,
     purchasedBackgrounds: MutableState<MutableSet<String>>,
-    onBackgroundEquipped: (Int) -> Unit
+    onBackgroundEquipped: (Int) -> Unit,
+    sharedPreferences: SharedPreferences
 ) {
-    // Check if the background is purchased
-    val isPurchased = remember { mutableStateOf(purchasedBackgrounds.value.contains(background.name)) }
+    val isPurchased = remember(purchasedBackgrounds.value) {
+        mutableStateOf(purchasedBackgrounds.value.contains(background.name))
+    }
 
-    // Row composable to display each background item
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.clickable {
-            // Handle click events for purchasing and equipping backgrounds
-            if (!isPurchased.value) { // Check if background is not purchased
-                if (coins.value >= background.price) {
-                    coins.value -= background.price
-                    isPurchased.value = true // Mark as purchased
-                    purchasedBackgrounds.value.add(background.name) // Add to purchased backgrounds set
-                }
+            if (!isPurchased.value && coins.value >= background.price) {
+                coins.value -= background.price
+                purchasedBackgrounds.value.add(background.name)
+                isPurchased.value = true  // Ensure UI updates to reflect the purchase
+                savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
             }
-            // Equip the background
-            equipBackground(background, equippedBackgroundId, onBackgroundEquipped)
+            equipBackground(background, equippedBackgroundId, onBackgroundEquipped, sharedPreferences)
         }
     ) {
-        // Box composable for displaying background image placeholder
+        // Display background image
         Box(
             modifier = Modifier
                 .size(100.dp)
                 .background(Color.Gray)
         ) {
-            // Display background image
             Image(
                 painter = painterResource(id = background.imageResource),
                 contentDescription = null,
@@ -322,27 +353,31 @@ fun ShopBackgroundItem(
         }
         Spacer(modifier = Modifier.width(16.dp))
         // Display background item name and price
-        Text(
-            text = "${background.name} - Price: ${background.price} coins",
-            style = TextStyle(fontSize = 18.sp)
-        )
-        // Display "Purchased" tag for purchased backgrounds
-        if (isPurchased.value) {
+        Column {
             Text(
-                text = "Purchased",
-                style = TextStyle(fontSize = 18.sp, color = Color.Green),
-                modifier = Modifier.padding(start = 8.dp)
+                text = "${background.name} - Price: ${background.price} coins",
+                style = TextStyle(fontSize = 18.sp)
             )
+            // Display "Purchased" tag for purchased backgrounds
+            if (isPurchased.value) {
+                Text(
+                    text = "Purchased",
+                    style = TextStyle(fontSize = 14.sp, color = Color.Green),
+                    modifier = Modifier.padding(top = 4.dp, start = 8.dp)
+                )
+            }
         }
     }
 }
+
 
 
 // Function to equip a background
 private fun equipBackground(
     background: BackgroundItemModel,
     equippedBackgroundId: MutableState<Int>,
-    onBackgroundEquipped: (Int) -> Unit
+    onBackgroundEquipped: (Int) -> Unit,
+    sharedPreferences: SharedPreferences
 ) {
     // Only change equipped background if it's different from the current one
     if (equippedBackgroundId.value != background.imageResource) {
@@ -350,8 +385,19 @@ private fun equipBackground(
         // Update the equipped background ID
         equippedBackgroundId.value = background.imageResource
         onBackgroundEquipped(background.imageResource)
+
+        // Save the equipped background ID to SharedPreferences
+        sharedPreferences.edit().putInt("equipped_background_id", background.imageResource).apply()
     }
 }
+
+private fun savePurchasesToPreferences(purchased: Set<String>, preferences: SharedPreferences) {
+    Log.d("ShopScreen", "Saving purchases: $purchased")
+    preferences.edit()
+        .putStringSet("purchased_backgrounds", purchased)
+        .apply()
+}
+
 
 
 // Composable function for the slot machine screen
@@ -370,12 +416,7 @@ fun SlotMachineApp(
     // Load the background image based on the equipped background ID
     val backgroundImage = painterResource(id = equippedBackgroundId.value)
 
-    // Rest of the composable remains the same
 
-    // Callback function to update equipped background ID
-    val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
-        equippedBackgroundId.value = newBackgroundId
-    }
 
     // Center the content vertically and horizontally
     Box(
@@ -422,6 +463,7 @@ fun SlotMachineApp(
         }
     }
 }
+
 
 
 
@@ -500,6 +542,7 @@ fun SlotMachine(
         }
     }
 }
+
 
 // Function to check winning combinations
 fun checkWinningCombination(reels: List<List<Int>>): Int {
