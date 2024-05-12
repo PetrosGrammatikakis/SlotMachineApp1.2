@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var equippedBackgroundId: MutableState<Int>
     private lateinit var purchasedBackgrounds: MutableState<Set<String>>
     private lateinit var realCoins: MutableState<Int>
+    private lateinit var lastUpdatedDay: String
 
     // Callback function to update the equipped background ID
     private val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
@@ -78,6 +79,8 @@ class MainActivity : ComponentActivity() {
 
         // Initialize SharedPreferences for storing data
         sharedPreferences = getSharedPreferences("my_preferences", Context.MODE_PRIVATE)
+        // Initialize lastUpdatedDay for Date data
+        lastUpdatedDay = sharedPreferences.getString("last_updated_day", getCurrentDay()) ?: getCurrentDay()
         // Initialize mutable state for coins count
         coins = mutableIntStateOf(sharedPreferences.getInt("coins", 100))
         // Initialize mutable state for real coins count
@@ -88,6 +91,8 @@ class MainActivity : ComponentActivity() {
         purchasedBackgrounds = mutableStateOf(
             sharedPreferences.getStringSet("purchased_backgrounds", setOf()) ?: setOf()
         )
+
+        updateDailyCoins()
 
         // Set the content of the activity using Compose
         setContent {
@@ -130,6 +135,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun getCurrentDay(): String {
+        val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return formatter.format(java.util.Date())
+    }
+
+    private fun updateDailyCoins() {
+        val today = getCurrentDay()
+        if (today != lastUpdatedDay) {
+            if (coins.value < 50) {
+                coins.value = 50
+            }
+            sharedPreferences.edit().apply {
+                putInt("coins", coins.value)
+                putString("last_updated_day", today)
+                apply()
+            }
+            lastUpdatedDay = today
+        }
+    }
+
     // onStop function called when the activity is stopped
     override fun onStop() {
         super.onStop()
@@ -139,6 +164,7 @@ class MainActivity : ComponentActivity() {
             putInt("real_coins", realCoins.value)
             putInt("equipped_background_id", equippedBackgroundId.value)
             putStringSet("purchased_backgrounds", purchasedBackgrounds.value)
+            putString("last_updated_day", lastUpdatedDay)
             apply()
         }
     }
