@@ -270,14 +270,16 @@ fun ShopScreen(
         }
 
         // Display each background item available in the shop
+        // Items loop to display backgrounds
         items(backgrounds) { background ->
+            // Change the click logic to check and update purchases properly
             ShopBackgroundItem(
                 background = background,
                 coins = coins,
                 equippedBackgroundId = equippedBackgroundId,
                 purchasedBackgrounds = mutablePurchasedBackgrounds,
                 onBackgroundEquipped = onBackgroundEquipped,
-                sharedPreferences = sharedPreferences // Pass sharedPreferences here
+                sharedPreferences = sharedPreferences
             )
         }
 
@@ -327,12 +329,16 @@ fun ShopBackgroundItem(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.clickable {
-            if (!isPurchased.value && coins.value >= background.price) {
-                coins.value -= background.price
-                purchasedBackgrounds.value.add(background.name)
-                isPurchased.value = true  // Ensure UI updates to reflect the purchase
-                savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+            // Update purchasing logic
+            if (!isPurchased.value) {
+                if (coins.value >= background.price) {
+                    coins.value -= background.price
+                    purchasedBackgrounds.value.add(background.name)
+                    isPurchased.value = true  // Ensure UI updates to reflect the purchase
+                    savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+                }
             }
+            // Equip background without extra charges
             equipBackground(background, equippedBackgroundId, onBackgroundEquipped, sharedPreferences)
         }
     ) {
