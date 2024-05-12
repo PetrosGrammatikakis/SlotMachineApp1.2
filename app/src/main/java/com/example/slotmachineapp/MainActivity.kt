@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var coins: MutableState<Int>
     private lateinit var equippedBackgroundId: MutableState<Int>
     private lateinit var purchasedBackgrounds: MutableState<Set<String>>
+    private lateinit var realCoins: MutableState<Int>
 
     // Callback function to update the equipped background ID
     private val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
@@ -79,6 +80,8 @@ class MainActivity : ComponentActivity() {
         sharedPreferences = getSharedPreferences("my_preferences", Context.MODE_PRIVATE)
         // Initialize mutable state for coins count
         coins = mutableIntStateOf(sharedPreferences.getInt("coins", 100))
+        // Initialize mutable state for real coins count
+        realCoins = mutableIntStateOf(sharedPreferences.getInt("real_coins", 0))
         // Initialize mutable state for equipped background ID
         equippedBackgroundId = mutableIntStateOf(sharedPreferences.getInt("equipped_background_id", R.drawable.man))
         // Initialize mutable state for purchased backgrounds
@@ -112,6 +115,7 @@ class MainActivity : ComponentActivity() {
                         // Call the ShopScreen composable
                         ShopScreen(
                             coins = coins,
+                            realCoins = realCoins,
                             onBackClicked = { navController.popBackStack() },
                             equippedBackgroundId = equippedBackgroundId,
                             purchasedBackgrounds = purchasedBackgrounds,
@@ -132,6 +136,7 @@ class MainActivity : ComponentActivity() {
         // Save the current coins count and equipped background ID to SharedPreferences
         sharedPreferences.edit().apply {
             putInt("coins", coins.value)
+            putInt("real_coins", realCoins.value)
             putInt("equipped_background_id", equippedBackgroundId.value)
             putStringSet("purchased_backgrounds", purchasedBackgrounds.value)
             apply()
@@ -221,6 +226,7 @@ fun CustomButton(
 @Composable
 fun ShopScreen(
     coins: MutableState<Int>,
+    realCoins: MutableState<Int>,
     onBackClicked: () -> Unit,
     equippedBackgroundId: MutableState<Int>,
     purchasedBackgrounds: MutableState<Set<String>>,
@@ -267,6 +273,41 @@ fun ShopScreen(
                 style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+            Text(
+                text = "Available Real Coins: ${realCoins.value}",
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
+        // Convert coins to real coins
+        item {
+            Button(
+                onClick = {
+                    if (coins.value >= 1000) {
+                        coins.value -= 1000
+                        realCoins.value += 1
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Convert 1000 Coins to 1 Real Coin")
+            }
+        }
+
+        // Convert real coins to coins
+        item {
+            Button(
+                onClick = {
+                    if (realCoins.value >= 1) {
+                        realCoins.value -= 1
+                        coins.value += 1000
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Convert 1 Real Coin to 1000 Coins")
+            }
         }
 
         // Display each background item available in the shop
