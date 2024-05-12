@@ -64,6 +64,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var coins: MutableState<Int>
     private lateinit var equippedBackgroundId: MutableState<Int>
     private lateinit var purchasedBackgrounds: MutableState<Set<String>>
+    private lateinit var realCoins: MutableState<Int>
+    private lateinit var lastUpdatedDay: String
 
     // Callback function to update the equipped background ID
     private val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
@@ -77,14 +79,20 @@ class MainActivity : ComponentActivity() {
 
         // Initialize SharedPreferences for storing data
         sharedPreferences = getSharedPreferences("my_preferences", Context.MODE_PRIVATE)
+        // Initialize lastUpdatedDay for Date data
+        lastUpdatedDay = sharedPreferences.getString("last_updated_day", getCurrentDay()) ?: getCurrentDay()
         // Initialize mutable state for coins count
         coins = mutableIntStateOf(sharedPreferences.getInt("coins", 100))
+        // Initialize mutable state for real coins count
+        realCoins = mutableIntStateOf(sharedPreferences.getInt("real_coins", 0))
         // Initialize mutable state for equipped background ID
         equippedBackgroundId = mutableIntStateOf(sharedPreferences.getInt("equipped_background_id", R.drawable.man))
         // Initialize mutable state for purchased backgrounds
         purchasedBackgrounds = mutableStateOf(
             sharedPreferences.getStringSet("purchased_backgrounds", setOf()) ?: setOf()
         )
+
+        updateDailyCoins()
 
         // Set the content of the activity using Compose
         setContent {
@@ -112,6 +120,7 @@ class MainActivity : ComponentActivity() {
                         // Call the ShopScreen composable
                         ShopScreen(
                             coins = coins,
+                            realCoins = realCoins,
                             onBackClicked = { navController.popBackStack() },
                             equippedBackgroundId = equippedBackgroundId,
                             purchasedBackgrounds = purchasedBackgrounds,
@@ -126,14 +135,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun getCurrentDay(): String {
+        val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return formatter.format(java.util.Date())
+    }
+
+    private fun updateDailyCoins() {
+        val today = getCurrentDay()
+        if (today != lastUpdatedDay) {
+            if (coins.value < 50) {
+                coins.value = 50
+            }
+            sharedPreferences.edit().apply {
+                putInt("coins", coins.value)
+                putString("last_updated_day", today)
+                apply()
+            }
+            lastUpdatedDay = today
+        }
+    }
+
     // onStop function called when the activity is stopped
     override fun onStop() {
         super.onStop()
         // Save the current coins count and equipped background ID to SharedPreferences
         sharedPreferences.edit().apply {
             putInt("coins", coins.value)
+            putInt("real_coins", realCoins.value)
             putInt("equipped_background_id", equippedBackgroundId.value)
             putStringSet("purchased_backgrounds", purchasedBackgrounds.value)
+            putString("last_updated_day", lastUpdatedDay)
             apply()
         }
     }
@@ -221,6 +252,7 @@ fun CustomButton(
 @Composable
 fun ShopScreen(
     coins: MutableState<Int>,
+    realCoins: MutableState<Int>,
     onBackClicked: () -> Unit,
     equippedBackgroundId: MutableState<Int>,
     purchasedBackgrounds: MutableState<Set<String>>,
@@ -267,17 +299,54 @@ fun ShopScreen(
                 style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+            Text(
+                text = "Available Real Coins: ${realCoins.value}",
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
+        // Convert coins to real coins
+        item {
+            Button(
+                onClick = {
+                    if (coins.value >= 1000) {
+                        coins.value -= 1000
+                        realCoins.value += 1
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Convert 1000 Coins to 1 Real Coin")
+            }
+        }
+
+        // Convert real coins to coins
+        item {
+            Button(
+                onClick = {
+                    if (realCoins.value >= 1) {
+                        realCoins.value -= 1
+                        coins.value += 1000
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Convert 1 Real Coin to 1000 Coins")
+            }
         }
 
         // Display each background item available in the shop
+        // Items loop to display backgrounds
         items(backgrounds) { background ->
+            // Change the click logic to check and update purchases properly
             ShopBackgroundItem(
                 background = background,
                 coins = coins,
                 equippedBackgroundId = equippedBackgroundId,
                 purchasedBackgrounds = mutablePurchasedBackgrounds,
                 onBackgroundEquipped = onBackgroundEquipped,
-                sharedPreferences = sharedPreferences // Pass sharedPreferences here
+                sharedPreferences = sharedPreferences
             )
         }
 
@@ -327,12 +396,16 @@ fun ShopBackgroundItem(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.clickable {
-            if (!isPurchased.value && coins.value >= background.price) {
-                coins.value -= background.price
-                purchasedBackgrounds.value.add(background.name)
-                isPurchased.value = true  // Ensure UI updates to reflect the purchase
-                savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+            // Update purchasing logic
+            if (!isPurchased.value) {
+                if (coins.value >= background.price) {
+                    coins.value -= background.price
+                    purchasedBackgrounds.value.add(background.name)
+                    isPurchased.value = true  // Ensure UI updates to reflect the purchase
+                    savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+                }
             }
+            // Equip background without extra charges
             equipBackground(background, equippedBackgroundId, onBackgroundEquipped, sharedPreferences)
         }
     ) {
