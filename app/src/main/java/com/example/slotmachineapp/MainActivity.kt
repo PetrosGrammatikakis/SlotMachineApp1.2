@@ -54,10 +54,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 
-
-
-
-
 // MainActivity class, the entry point of the Android application
 class MainActivity : ComponentActivity() {
     private lateinit var sharedPreferences: SharedPreferences
@@ -71,7 +67,6 @@ class MainActivity : ComponentActivity() {
     private val onBackgroundEquipped: (Int) -> Unit = { newBackgroundId ->
         equippedBackgroundId.value = newBackgroundId
     }
-
 
     // onCreate function called when the activity is created
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -126,10 +121,8 @@ class MainActivity : ComponentActivity() {
                             purchasedBackgrounds = purchasedBackgrounds,
                             onBackgroundEquipped = onBackgroundEquipped,
                             sharedPreferences = sharedPreferences // Pass sharedPreferences here
-
                         )
                     }
-
                 }
             }
         }
@@ -168,9 +161,7 @@ class MainActivity : ComponentActivity() {
             apply()
         }
     }
-
 }
-
 
 // Composable function for the starter screen
 @Composable
@@ -245,9 +236,7 @@ fun CustomButton(
     }
 }
 
-
 // Composable function for the shop screen
-
 @SuppressLint("MutableCollectionMutableState")
 @Composable
 fun ShopScreen(
@@ -285,76 +274,105 @@ fun ShopScreen(
     // Ensure equippedBackgroundId is initialized correctly
     equippedBackgroundId.value = equippedFromPrefs
 
-    // LazyColumn composable to hold the content of the shop screen
-    LazyColumn(
+    // Column composable to hold the content of the shop screen
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Display available coins count
-        item {
-            Text(
-                text = "Available Coins: ${coins.value}",
-                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Text(
-                text = "Available Real Coins: ${realCoins.value}",
-                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+        // Back button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            contentAlignment = Alignment.TopStart
+        ) {
+            BackButton(onBackClicked)
         }
 
+        // Display title "Shop"
+        Text(
+            text = "Shop",
+            style = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Display available coins count
+        Text(
+            text = "Currency:",
+            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Text(
+            text = "Available Coins: ${coins.value}",
+            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+                .border(BorderStroke(1.dp, Color.Black), shape = RoundedCornerShape(4.dp))
+                .padding(8.dp)
+        )
+        Text(
+            text = "Available Real Coins: ${realCoins.value}",
+            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+                .border(BorderStroke(1.dp, Color.Black), shape = RoundedCornerShape(4.dp))
+                .padding(8.dp)
+        )
+
         // Convert coins to real coins
-        item {
-            Button(
-                onClick = {
-                    if (coins.value >= 1000) {
-                        coins.value -= 1000
-                        realCoins.value += 1
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Convert 1000 Coins to 1 Real Coin")
-            }
+        Button(
+            onClick = {
+                if (coins.value >= 1000) {
+                    coins.value -= 1000
+                    realCoins.value += 1
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Convert 1000 Coins to 1 Real Coin")
         }
 
         // Convert real coins to coins
-        item {
-            Button(
-                onClick = {
-                    if (realCoins.value >= 1) {
-                        realCoins.value -= 1
-                        coins.value += 1000
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Convert 1 Real Coin to 1000 Coins")
-            }
+        Button(
+            onClick = {
+                if (realCoins.value >= 1) {
+                    realCoins.value -= 1
+                    coins.value += 1000
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Convert 1 Real Coin to 1000 Coins")
         }
 
-        // Display each background item available in the shop
-        // Items loop to display backgrounds
-        items(backgrounds) { background ->
-            // Change the click logic to check and update purchases properly
-            ShopBackgroundItem(
-                background = background,
-                coins = coins,
-                equippedBackgroundId = equippedBackgroundId,
-                purchasedBackgrounds = mutablePurchasedBackgrounds,
-                onBackgroundEquipped = onBackgroundEquipped,
-                sharedPreferences = sharedPreferences
-            )
-        }
+        // Display "Backgrounds:" label
+        Text(
+            text = "Backgrounds:",
+            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
-        // Button to navigate back to the game screen
-        item {
-            Button(onClick = onBackClicked, modifier = Modifier.fillMaxWidth()) {
-                Text("Back to Game")
+        // LazyColumn to display backgrounds in a scrollable window
+        LazyColumn(
+            modifier = Modifier
+                .height(300.dp) // Set height to show only 3 backgrounds
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            // Display each background item available in the shop
+            items(backgrounds) { background ->
+                ShopBackgroundItem(
+                    background = background,
+                    coins = coins,
+                    equippedBackgroundId = equippedBackgroundId,
+                    purchasedBackgrounds = mutablePurchasedBackgrounds,
+                    onBackgroundEquipped = onBackgroundEquipped,
+                    sharedPreferences = sharedPreferences
+                )
             }
         }
     }
@@ -366,8 +384,20 @@ fun ShopScreen(
 }
 
 
-
-
+@Composable
+fun BackButton(onBackClicked: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clickable(onClick = onBackClicked)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_background), // Replace with your back arrow image resource
+            contentDescription = "Back",
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
 
 
 // Data class representing a background item in the shop
@@ -378,7 +408,6 @@ data class BackgroundItemModel(
     var purchased: Boolean = false,
     var equipped: Boolean = false
 )
-
 
 // Composable function for rendering a background item in the shop
 @Composable
@@ -396,19 +425,22 @@ fun ShopBackgroundItem(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable {
-            // Update purchasing logic
-            if (!isPurchased.value) {
-                if (coins.value >= background.price) {
-                    coins.value -= background.price
-                    purchasedBackgrounds.value.add(background.name)
-                    isPurchased.value = true  // Ensure UI updates to reflect the purchase
-                    savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+        modifier = Modifier
+            .clickable {
+                // Update purchasing logic
+                if (!isPurchased.value) {
+                    if (coins.value >= background.price) {
+                        coins.value -= background.price
+                        purchasedBackgrounds.value.add(background.name)
+                        isPurchased.value = true  // Ensure UI updates to reflect the purchase
+                        savePurchasesToPreferences(purchasedBackgrounds.value, sharedPreferences)
+                    }
                 }
+                // Equip background without extra charges
+                equipBackground(background, equippedBackgroundId, onBackgroundEquipped, sharedPreferences)
             }
-            // Equip background without extra charges
-            equipBackground(background, equippedBackgroundId, onBackgroundEquipped, sharedPreferences)
-        }
+            .border(BorderStroke(1.dp, Color.Black), shape = RoundedCornerShape(4.dp))
+            .padding(8.dp)
     ) {
         // Display background image
         Box(
@@ -442,8 +474,6 @@ fun ShopBackgroundItem(
     }
 }
 
-
-
 // Function to equip a background
 private fun equipBackground(
     background: BackgroundItemModel,
@@ -470,8 +500,6 @@ private fun savePurchasesToPreferences(purchased: Set<String>, preferences: Shar
         .apply()
 }
 
-
-
 // Composable function for the slot machine screen
 @Composable
 fun SlotMachineApp(
@@ -487,8 +515,6 @@ fun SlotMachineApp(
 
     // Load the background image based on the equipped background ID
     val backgroundImage = painterResource(id = equippedBackgroundId.value)
-
-
 
     // Center the content vertically and horizontally
     Box(
@@ -521,12 +547,6 @@ fun SlotMachineApp(
                 )
             }
 
-            // "Add Coins" button
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { coins.value += 10 }) {
-                Text("Add Coins (+10)")
-            }
-
             // Back to starter screen button
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { navController.popBackStack() }) {
@@ -535,9 +555,6 @@ fun SlotMachineApp(
         }
     }
 }
-
-
-
 
 // Composable function for the slot machine content
 @Composable
@@ -615,7 +632,6 @@ fun SlotMachine(
     }
 }
 
-
 // Function to check winning combinations
 fun checkWinningCombination(reels: List<List<Int>>): Int {
     // Flatten the list of reels to make it easier to analyze
@@ -626,7 +642,6 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
     val twoPairs = groupedNumbers.filterValues { it.size == 2 }
     val triplets = groupedNumbers.filterValues { it.size == 3 }
 
-
     // Check if there are exactly two pairs
     if (twoPairs.size == 2 && twoPairs.values.all { it.size == 2 }) {
         return 400 // Reward for the specific pattern
@@ -636,7 +651,6 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
     if (triplets.size == 1 && twoPairs.size == 1) {
         return 1000 // Reward for the specific pattern
     }
-
 
     // Count the number of reels with the same number
     val uniqueNumbers = flattenedReels.distinct()
@@ -663,7 +677,6 @@ suspend fun spinReel(reel: MutableList<Int>): List<Int> {
     }
 
     // Collect the result of the reel after spinning
-
     return reel.toList()
 }
 
