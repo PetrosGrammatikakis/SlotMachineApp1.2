@@ -51,8 +51,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 // MainActivity class, the entry point of the Android application
 class MainActivity : ComponentActivity() {
@@ -278,6 +278,7 @@ fun ShopScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -355,16 +356,14 @@ fun ShopScreen(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // LazyColumn to display backgrounds in a scrollable window
-        LazyColumn(
-            modifier = Modifier
-                .height(300.dp) // Set height to show only 3 backgrounds
-                .padding(8.dp),
+        // Column to display backgrounds in a scrollable window
+        Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
         ) {
             // Display each background item available in the shop
-            items(backgrounds) { background ->
+            backgrounds.forEach { background ->
                 ShopBackgroundItem(
                     background = background,
                     coins = coins,
@@ -384,6 +383,7 @@ fun ShopScreen(
 }
 
 
+
 @Composable
 fun BackButton(onBackClicked: () -> Unit) {
     Box(
@@ -392,7 +392,7 @@ fun BackButton(onBackClicked: () -> Unit) {
             .clickable(onClick = onBackClicked)
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_background), // Replace with your back arrow image resource
+            painter = painterResource(id = R.drawable.back1), // Replace with your back arrow image resource
             contentDescription = "Back",
             modifier = Modifier.fillMaxSize()
         )
