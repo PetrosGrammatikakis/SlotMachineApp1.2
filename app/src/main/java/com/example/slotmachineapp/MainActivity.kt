@@ -650,7 +650,7 @@ fun SlotMachine(
             currentRisk = selectedRisk,
             onRiskSelected = { risk ->
                 selectedRisk = risk
-                multiplier = 1.0f + (risk - 10) / 100f
+                multiplier = 1.0f + (risk / 10) * 0.1f
                 showMultiplierDialog = false
             },
             onDismiss = { showMultiplierDialog = false }
