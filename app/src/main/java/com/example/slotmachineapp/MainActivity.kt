@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                     // Define composable for the game screen
                     composable("game") {
                         // Call the SlotMachineApp composable
-                        SlotMachineApp(navController = navController, coins = coins, equippedBackgroundId = equippedBackgroundId)
+                        SlotMachineApp(navController = navController, coins = coins, realCoins=realCoins, equippedBackgroundId = equippedBackgroundId)
                     }
                     // Define composable for the shop screen
                     composable("Shop") {
@@ -505,6 +505,7 @@ private fun savePurchasesToPreferences(purchased: Set<String>, preferences: Shar
 fun SlotMachineApp(
     navController: NavController,
     coins: MutableState<Int>,
+    realCoins: MutableState<Int>,
     equippedBackgroundId: MutableState<Int>
 ) {
 
@@ -540,11 +541,17 @@ fun SlotMachineApp(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                SlotMachine(message, snackbarHostState, coins) // Remove sharedPreferences parameter
+                SlotMachine(message, snackbarHostState, coins, realCoins) // Add realCoins parameter
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            // Shop button
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { navController.navigate("Shop") }) {
+                Text("Shop")
             }
 
             // Back to starter screen button
@@ -561,7 +568,8 @@ fun SlotMachineApp(
 fun SlotMachine(
     message: MutableState<String>,
     snackbarHostState: SnackbarHostState,
-    coins: MutableState<Int>
+    coins: MutableState<Int>,
+    realCoins: MutableState<Int>
 ) {
     // Mutable state for the reels
     val reels = remember { List(5) { mutableStateListOf(Random.nextInt(0, 10)) } }
@@ -571,10 +579,15 @@ fun SlotMachine(
     // Coroutine scope for launching coroutines
     val coroutineScope = rememberCoroutineScope()
 
+    // States for multiplier functionality
+    var multiplier by remember { mutableFloatStateOf(1.0f) }
+    var selectedRisk by remember { mutableIntStateOf(10) }
+    var showMultiplierDialog by remember { mutableStateOf(false) }
+
     // Effect for spinning the reels
     LaunchedEffect(spinning) {
-        if (spinning && coins.value >= 10) {
-            coins.value -= 10 // Deduct 10 coins from the user's balance
+        if (spinning && coins.value >= selectedRisk) {
+            coins.value -= selectedRisk // Deduct selected coins from the user's balance
 
             // Launch coroutines to spin each reel and collect results
             val results = mutableListOf<List<Int>>()
@@ -587,11 +600,19 @@ fun SlotMachine(
                         val coinsAwarded = checkWinningCombination(results)
 
                         if (coinsAwarded > 0) {
-                            val finalMessage = "You win $coinsAwarded coins!"
+                            val finalMessage = if (coinsAwarded == JACKPOT_REWARD) {
+                                "Jackpot! You win $coinsAwarded coins!"
+                            } else {
+                                String.format(
+                                    java.util.Locale.getDefault(),
+                                    "You win %d coins!",
+                                    (coinsAwarded * multiplier).toInt()
+                                )
+                            }
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(finalMessage)
                             }
-                            coins.value += coinsAwarded // Update coins based on the results
+                            coins.value += (coinsAwarded * multiplier).toInt() // Update coins based on the results
                         }
 
                         spinning = false // Reset spinning to false
@@ -612,7 +633,12 @@ fun SlotMachine(
         ReelsView(reels)
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = { spinning = true }) {
-            Text("Spin (Costs 10 coins)")
+            Text("Spin (Costs $selectedRisk coins)")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { showMultiplierDialog = true }) {
+            Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", multiplier))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -625,17 +651,100 @@ fun SlotMachine(
                 fontWeight = FontWeight.Bold
             )
         )
+        // Display current real coins count
+        Text(
+            text = "Real Coins: ${realCoins.value}",
+            color = Color(0xFFFFD700), // Golden color
+            style = TextStyle(
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
         // Display the message on the screen
         if (message.value.isNotBlank()) {
             Text(message.value)
         }
     }
+
+    if (showMultiplierDialog) {
+        MultiplierDialog(
+            currentRisk = selectedRisk,
+            onRiskSelected = { risk ->
+                selectedRisk = risk
+                multiplier = calculateMultiplier(risk)
+                showMultiplierDialog = false
+            },
+            onDismiss = { showMultiplierDialog = false }
+        )
+    }
 }
+
+
+fun calculateMultiplier(risk: Int): Float {
+    return when {
+        risk <= 10 -> 1.0f
+        risk <= 20 -> 1.2f
+        else -> 1.2f + ((risk - 20) / 10) * 0.1f
+    }
+}
+
+@Composable
+fun MultiplierDialog(
+    currentRisk: Int,
+    onRiskSelected: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var tempRisk by remember { mutableIntStateOf(currentRisk) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Select Risk Amount") },
+        text = {
+            Column {
+                Text("How much do you want to risk?")
+                Spacer(modifier = Modifier.height(16.dp))
+                Slider(
+                    value = tempRisk.toFloat(),
+                    onValueChange = {
+                        tempRisk = (it / 10).toInt() * 10 // Round to the nearest multiple of 10
+                    },
+                    valueRange = 10f..100f,
+                    steps = 9 // 10, 20, 30, ..., 100
+                )
+                Text(String.format(java.util.Locale.getDefault(), "Risk: %d coins", tempRisk))
+                Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", calculateMultiplier(tempRisk)))
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onRiskSelected(tempRisk) }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+
+// Constants for rewards
+const val JACKPOT_REWARD = 5000 // Define the jackpot reward
 
 // Function to check winning combinations
 fun checkWinningCombination(reels: List<List<Int>>): Int {
     // Flatten the list of reels to make it easier to analyze
     val flattenedReels = reels.flatten()
+
+    // Check for the jackpot (five sevens)
+    if (flattenedReels.count { it == 7 } == 5) {
+        return JACKPOT_REWARD
+    }
 
     // Check if there are two groups of two identical numbers
     val groupedNumbers = flattenedReels.groupBy { it }
@@ -644,12 +753,12 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
 
     // Check if there are exactly two pairs
     if (twoPairs.size == 2 && twoPairs.values.all { it.size == 2 }) {
-        return 400 // Reward for the specific pattern
+        return 40 // Reward for the specific pattern
     }
 
     // Check if there are exactly one triplet and one pair
     if (triplets.size == 1 && twoPairs.size == 1) {
-        return 1000 // Reward for the specific pattern
+        return 150 // Reward for the specific pattern
     }
 
     // Count the number of reels with the same number
@@ -660,9 +769,9 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
 
     // Check for winning combinations
     return when {
-        counts.contains(5) -> 5000 // All reels have the same number
-        counts.contains(4) -> 600 // Four reels have the same number
-        counts.contains(3) -> 250 // Three reels have the same number
+        counts.contains(5) -> 1000 // All reels have the same number
+        counts.contains(4) -> 350 // Four reels have the same number
+        counts.contains(3) -> 85 // Three reels have the same number
         else -> 0 // No winning combination
     }
 }
@@ -737,8 +846,10 @@ fun SlotMachineAppPreview() {
     val navController = rememberNavController()
     // Mock coins state for preview
     val coins = remember { mutableIntStateOf(100) }
+    // Mock real coins state for preview
+    val realCoins = remember { mutableIntStateOf(10) }
     // Mock equipped background ID state for preview
     val equippedBackgroundId = remember { mutableIntStateOf(R.drawable.man) }
     // Call the SlotMachineApp composable with mock data
-    SlotMachineApp(navController = navController, coins = coins, equippedBackgroundId = equippedBackgroundId)
+    SlotMachineApp(navController = navController, coins = coins, realCoins = realCoins, equippedBackgroundId = equippedBackgroundId)
 }
