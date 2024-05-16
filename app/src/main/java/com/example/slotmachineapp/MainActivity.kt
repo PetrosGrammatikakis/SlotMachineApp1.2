@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                     // Define composable for the game screen
                     composable("game") {
                         // Call the SlotMachineApp composable
-                        SlotMachineApp(navController = navController, coins = coins, equippedBackgroundId = equippedBackgroundId)
+                        SlotMachineApp(navController = navController, coins = coins, realCoins=realCoins, equippedBackgroundId = equippedBackgroundId)
                     }
                     // Define composable for the shop screen
                     composable("Shop") {
@@ -505,6 +505,7 @@ private fun savePurchasesToPreferences(purchased: Set<String>, preferences: Shar
 fun SlotMachineApp(
     navController: NavController,
     coins: MutableState<Int>,
+    realCoins: MutableState<Int>,
     equippedBackgroundId: MutableState<Int>
 ) {
 
@@ -540,11 +541,17 @@ fun SlotMachineApp(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                SlotMachine(message, snackbarHostState, coins) // Remove sharedPreferences parameter
+                SlotMachine(message, snackbarHostState, coins, realCoins) // Add realCoins parameter
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            // Shop button
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { navController.navigate("Shop") }) {
+                Text("Shop")
             }
 
             // Back to starter screen button
@@ -561,7 +568,8 @@ fun SlotMachineApp(
 fun SlotMachine(
     message: MutableState<String>,
     snackbarHostState: SnackbarHostState,
-    coins: MutableState<Int>
+    coins: MutableState<Int>,
+    realCoins: MutableState<Int>
 ) {
     // Mutable state for the reels
     val reels = remember { List(5) { mutableStateListOf(Random.nextInt(0, 10)) } }
@@ -639,6 +647,15 @@ fun SlotMachine(
                 fontWeight = FontWeight.Bold
             )
         )
+        // Display current real coins count
+        Text(
+            text = "Real Coins: ${realCoins.value}",
+            color = Color(0xFFFFD700), // Golden color
+            style = TextStyle(
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
         // Display the message on the screen
         if (message.value.isNotBlank()) {
             Text(message.value)
@@ -650,7 +667,7 @@ fun SlotMachine(
             currentRisk = selectedRisk,
             onRiskSelected = { risk ->
                 selectedRisk = risk
-                multiplier = 1.0f + (risk / 10) * 0.1f
+                multiplier = calculateMultiplier(risk)
                 showMultiplierDialog = false
             },
             onDismiss = { showMultiplierDialog = false }
@@ -658,6 +675,14 @@ fun SlotMachine(
     }
 }
 
+
+fun calculateMultiplier(risk: Int): Float {
+    return when {
+        risk <= 10 -> 1.0f
+        risk <= 20 -> 1.2f
+        else -> 1.2f + ((risk - 20) / 10) * 0.1f
+    }
+}
 
 @Composable
 fun MultiplierDialog(
@@ -683,7 +708,7 @@ fun MultiplierDialog(
                     steps = 9 // 10, 20, 30, ..., 100
                 )
                 Text(String.format(java.util.Locale.getDefault(), "Risk: %d coins", tempRisk))
-                Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", 1.0f + (tempRisk / 10) * 0.1f))
+                Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", calculateMultiplier(tempRisk)))
             }
         },
         confirmButton = {
@@ -808,8 +833,10 @@ fun SlotMachineAppPreview() {
     val navController = rememberNavController()
     // Mock coins state for preview
     val coins = remember { mutableIntStateOf(100) }
+    // Mock real coins state for preview
+    val realCoins = remember { mutableIntStateOf(10) }
     // Mock equipped background ID state for preview
     val equippedBackgroundId = remember { mutableIntStateOf(R.drawable.man) }
     // Call the SlotMachineApp composable with mock data
-    SlotMachineApp(navController = navController, coins = coins, equippedBackgroundId = equippedBackgroundId)
+    SlotMachineApp(navController = navController, coins = coins, realCoins = realCoins, equippedBackgroundId = equippedBackgroundId)
 }
