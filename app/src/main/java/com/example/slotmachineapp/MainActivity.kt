@@ -580,8 +580,8 @@ fun SlotMachine(
     val coroutineScope = rememberCoroutineScope()
 
     // States for multiplier functionality
-    var multiplier by remember { mutableStateOf(1.0f) }
-    var selectedRisk by remember { mutableStateOf(10) }
+    var multiplier by remember { mutableFloatStateOf(1.0f) }
+    var selectedRisk by remember { mutableIntStateOf(10) }
     var showMultiplierDialog by remember { mutableStateOf(false) }
 
     // Effect for spinning the reels
@@ -600,11 +600,15 @@ fun SlotMachine(
                         val coinsAwarded = checkWinningCombination(results)
 
                         if (coinsAwarded > 0) {
-                            val finalMessage = String.format(
-                                java.util.Locale.getDefault(),
-                                "You win %d coins!",
-                                (coinsAwarded * multiplier).toInt()
-                            )
+                            val finalMessage = if (coinsAwarded == JACKPOT_REWARD) {
+                                "Jackpot! You win $coinsAwarded coins!"
+                            } else {
+                                String.format(
+                                    java.util.Locale.getDefault(),
+                                    "You win %d coins!",
+                                    (coinsAwarded * multiplier).toInt()
+                                )
+                            }
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(finalMessage)
                             }
@@ -690,7 +694,7 @@ fun MultiplierDialog(
     onRiskSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var tempRisk by remember { mutableStateOf(currentRisk) }
+    var tempRisk by remember { mutableIntStateOf(currentRisk) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -728,10 +732,19 @@ fun MultiplierDialog(
     )
 }
 
+
+// Constants for rewards
+const val JACKPOT_REWARD = 5000 // Define the jackpot reward
+
 // Function to check winning combinations
 fun checkWinningCombination(reels: List<List<Int>>): Int {
     // Flatten the list of reels to make it easier to analyze
     val flattenedReels = reels.flatten()
+
+    // Check for the jackpot (five sevens)
+    if (flattenedReels.count { it == 7 } == 5) {
+        return JACKPOT_REWARD
+    }
 
     // Check if there are two groups of two identical numbers
     val groupedNumbers = flattenedReels.groupBy { it }
