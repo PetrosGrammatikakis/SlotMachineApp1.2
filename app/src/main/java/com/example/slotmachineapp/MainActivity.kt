@@ -592,7 +592,11 @@ fun SlotMachine(
                         val coinsAwarded = checkWinningCombination(results)
 
                         if (coinsAwarded > 0) {
-                            val finalMessage = "You win ${(coinsAwarded * multiplier).toInt()} coins!"
+                            val finalMessage = String.format(
+                                java.util.Locale.getDefault(),
+                                "You win %d coins!",
+                                (coinsAwarded * multiplier).toInt()
+                            )
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(finalMessage)
                             }
@@ -622,7 +626,7 @@ fun SlotMachine(
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { showMultiplierDialog = true }) {
-            Text("Multiplier: x${String.format("%.1f", multiplier)}")
+            Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", multiplier))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -678,8 +682,8 @@ fun MultiplierDialog(
                     valueRange = 10f..100f,
                     steps = 9 // 10, 20, 30, ..., 100
                 )
-                Text("Risk: $tempRisk coins")
-                Text("Multiplier: x${String.format("%.1f", 1.0f + (tempRisk / 10) * 0.1f)}")
+                Text(String.format(java.util.Locale.getDefault(), "Risk: %d coins", tempRisk))
+                Text(String.format(java.util.Locale.getDefault(), "Multiplier: x%.1f", 1.0f + (tempRisk / 10) * 0.1f))
             }
         },
         confirmButton = {
