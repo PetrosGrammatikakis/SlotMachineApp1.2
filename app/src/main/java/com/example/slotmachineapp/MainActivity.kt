@@ -734,7 +734,7 @@ fun MultiplierDialog(
 
 
 // Constants for rewards
-const val JACKPOT_REWARD = 5000 // Define the jackpot reward
+const val JACKPOT_REWARD = 7500 // Define the jackpot reward
 
 // Function to check winning combinations
 fun checkWinningCombination(reels: List<List<Int>>): Int {
@@ -753,12 +753,12 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
 
     // Check if there are exactly two pairs
     if (twoPairs.size == 2 && twoPairs.values.all { it.size == 2 }) {
-        return 40 // Reward for the specific pattern
+        return 60 // Reward for the specific pattern
     }
 
     // Check if there are exactly one triplet and one pair
     if (triplets.size == 1 && twoPairs.size == 1) {
-        return 150 // Reward for the specific pattern
+        return 250 // Reward for the specific pattern
     }
 
     // Count the number of reels with the same number
@@ -769,9 +769,9 @@ fun checkWinningCombination(reels: List<List<Int>>): Int {
 
     // Check for winning combinations
     return when {
-        counts.contains(5) -> 1000 // All reels have the same number
-        counts.contains(4) -> 350 // Four reels have the same number
-        counts.contains(3) -> 85 // Three reels have the same number
+        counts.contains(5) -> 1250 // All reels have the same number
+        counts.contains(4) -> 500 // Four reels have the same number
+        counts.contains(3) -> 150 // Three reels have the same number
         else -> 0 // No winning combination
     }
 }
