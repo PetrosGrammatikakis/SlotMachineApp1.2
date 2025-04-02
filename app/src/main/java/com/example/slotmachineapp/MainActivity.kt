@@ -49,10 +49,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 // MainActivity class, the entry point of the Android application
 class MainActivity : ComponentActivity() {
@@ -583,11 +589,25 @@ fun SlotMachine(
     var multiplier by remember { mutableFloatStateOf(1.0f) }
     var selectedRisk by remember { mutableIntStateOf(10) }
     var showMultiplierDialog by remember { mutableStateOf(false) }
+    var autoSpinning by remember { mutableStateOf(false) } // State for auto-spin
 
-    // Effect for spinning the reels
+    // Effect for manual spinning the reels
     LaunchedEffect(spinning) {
-        if (spinning && coins.value >= selectedRisk) {
-            coins.value -= selectedRisk // Deduct selected coins from the user's balance
+        // This effect now only handles the consequences of a spin starting
+        if (spinning) {
+            // Check for sufficient coins *before* proceeding with the spin logic
+            if (coins.value < selectedRisk) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Not enough coins to spin!")
+                    spinning = false // Stop the spin if not enough coins
+                    autoSpinning = false // Also stop auto-spin
+                }
+                return@LaunchedEffect // Exit the effect early
+            }
+
+            coins.value -= selectedRisk // Deduct selected coins *only if* enough coins
+
+            // Launch coroutines to spin each reel and collect results
 
             // Launch coroutines to spin each reel and collect results
             val results = mutableListOf<List<Int>>()
@@ -619,22 +639,59 @@ fun SlotMachine(
                     }
                 }
             }
-        } else if (spinning) {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar("Not enough coins to spin!")
-                spinning = false
+        }
+        // Note: The check for insufficient coins was moved inside the spinning block
+        // to ensure it happens before deducting coins and starting the animation.
+    }
+
+    // Effect for auto-spinning logic
+    LaunchedEffect(autoSpinning) {
+        if (autoSpinning) {
+            while (autoSpinning) { // Loop while auto-spin is enabled
+                if (!spinning && coins.value >= selectedRisk) {
+                    // Only start a spin if not already spinning and enough coins
+                    spinning = true // Trigger the spin
+                } else if (!spinning && coins.value < selectedRisk) {
+                    // If not spinning but not enough coins, stop auto-spin
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Not enough coins for auto-spin. Stopping.")
+                    }
+                    autoSpinning = false // Turn off auto-spin
+                }
+                // Wait a short time before checking again, prevents tight loop if spinning is true
+                delay(100)
             }
         }
     }
+
 
     // Column composable for the slot machine UI
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(50.dp))
         ReelsView(reels)
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { spinning = true }) {
-            Text("Spin (Costs $selectedRisk coins)")
+
+        // Row for Spin and Auto-Spin buttons
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = {
+                if (!spinning) { // Prevent clicking spin if already spinning
+                    autoSpinning = false // Stop auto-spin if manual spin is clicked
+                    spinning = true
+                }
+            }) {
+                Text("Spin (Costs $selectedRisk coins)")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            // Auto-spin toggle button
+            IconButton(onClick = { autoSpinning = !autoSpinning }) {
+                Icon(
+                    imageVector = if (autoSpinning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (autoSpinning) "Pause Auto-Spin" else "Start Auto-Spin",
+                    tint = Color.White // Make icon visible against potentially dark backgrounds
+                )
+            }
         }
+
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { showMultiplierDialog = true }) {
