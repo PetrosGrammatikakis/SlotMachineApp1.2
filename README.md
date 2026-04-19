@@ -1,4 +1,3 @@
-This is for 8th semester of Computer Science made for a class by Nikolaos Paloukis and Petros Grammatikakis
 # 🎰 SlotMachineApp1.2
 
 SlotMachineApp1.2 is a simple mobile slot machine game built using **Kotlin** in **Android Studio**, with the assistance of AI tools during development.
@@ -47,3 +46,5 @@ The app focuses on gameplay, coin progression, and basic customization through a
 This project was developed as a learning exercise to improve skills in **Android development**, **UI design**, and **basic game logic implementation**.
 
 ---
+This is for 8th semester of Computer Science made for a class by Nikolaos Paloukis and Petros Grammatikakis
+
